@@ -38,16 +38,14 @@ def generate_synthetic_data():
     }
     return pd.DataFrame(data)
 
-# Load real file if it exists, otherwise build mock dataset so the system doesn't crash
+# Load real file if it exists, otherwise build fallback dataset quietly
 if os.path.exists(raw_path):
     raw_df = pd.read_excel(raw_path)
-    data_source_msg = "✅ Running on your live production 'Urbanization.xlsx' dataset."
 else:
     raw_df = generate_synthetic_data()
-    data_source_msg = "⚠️ 'Urbanization.xlsx' not found. System is running on an automatically generated testing dataset."
 
 # =========================================================
-# 1. MACHINE LEARNING ENGINE
+# 1. ANALYTICS & PREDICTION ENGINE
 # =========================================================
 FEATURE_COLS = [
     'Population_Density', 'Distance_From_City', 'Number_of_Industries',
@@ -81,7 +79,7 @@ def classify_tier(score):
     elif score >= 0.45: return 'Tier 2: Emerging/Moderate'
     else: return 'Tier 3: Stable Rural'
 
-# Execute Machine Learning Pipelines
+# Execute Calculation Pipelines
 processed_df, AI_WEIGHTS, dataset_scaler, trained_model = train_ml_model(raw_df)
 processed_df['Urbanization_Tier'] = processed_df['URI_Score'].apply(classify_tier)
 processed_df['Rank'] = processed_df['URI_Score'].rank(ascending=False, method='min').astype(int)
@@ -91,11 +89,10 @@ processed_df['Rank'] = processed_df['URI_Score'].rank(ascending=False, method='m
 # =========================================================
 st.set_page_config(page_title="Rurban Predictor", layout="wide")
 st.title("🏙️ Indian Rural Areas Urbanization Potential Predictor")
-st.info(data_source_msg)
 
-tab1, tab2, tab3 = st.tabs(["📊 Regional Insight Dashboard", "🎛️ AI Policy Simulator", "🧠 Machine Learning Explainer"])
+tab1, tab2, tab3 = st.tabs(["📊 Regional Insight Dashboard", "🎛️ Policy Simulator", "🔍 Factor Weight Analysis"])
 
-# --- TAB 1: DASHBOARD ---
+# --- TAB 1: REGIONAL INSIGHT DASHBOARD ---
 with tab1:
     st.subheader("Regional Performance Filter")
     selected_state = st.selectbox("Choose Target State Context:", sorted(processed_df['state_name'].unique()))
@@ -103,7 +100,7 @@ with tab1:
     
     col1, col2, col3 = st.columns(3)
     col1.metric("Villages Evaluated", len(state_df))
-    col2.metric("Average State AI Score", round(state_df['URI_Score'].mean(), 2))
+    col2.metric("Average State Score", round(state_df['URI_Score'].mean(), 2))
     col3.metric("High Potential Nodes", len(state_df[state_df['Urbanization_Tier'].str.contains("Tier 1")]))
     
     fig = px.scatter(
@@ -115,13 +112,13 @@ with tab1:
     
     st.dataframe(state_df[['Rank', 'village_name', 'URI_Score', 'Urbanization_Tier']].sort_values(by="Rank"), use_container_width=True)
 
-# --- TAB 2: AI POLICY SIMULATOR ---
+# --- TAB 2: POLICY SIMULATOR ---
 with tab2:
-    st.subheader("Real-Time Variable Mutation Matrix")
+    st.subheader("Real-Time Variable Adjustment Matrix")
     target_village = st.selectbox("Select Village Node:", sorted(processed_df['village_name'].unique()))
     v_data = processed_df[processed_df['village_name'] == target_village].iloc[0]
     
-    st.warning(f"Current AI Baseline Score: {round(v_data['URI_Score'], 3)} ({v_data['Urbanization_Tier']})")
+    st.warning(f"Current Baseline Score: {round(v_data['URI_Score'], 3)} ({v_data['Urbanization_Tier']})")
     
     sc1, sc2 = st.columns(2)
     with sc1:
@@ -161,20 +158,20 @@ with tab2:
 
     st.markdown("---")
     rc1, rc2 = st.columns(2)
-    rc1.metric("AI Simulated Score", round(sim_score, 3), delta=round(sim_score - v_data['URI_Score'], 3))
-    rc2.subheader(f"AI Prediction: **{classify_tier(sim_score)}**")
+    rc1.metric("Simulated Potential Score", round(sim_score, 3), delta=round(sim_score - v_data['URI_Score'], 3))
+    rc2.subheader(f"Predicted Status: **{classify_tier(sim_score)}**")
 
-# --- TAB 3: MACHINE LEARNING EXPLAINER ---
+# --- TAB 3: FACTOR WEIGHT ANALYSIS ---
 with tab3:
-    st.subheader("🧠 Explainable AI (XAI) Dashboard")
-    st.write("The system trained a **Random Forest Regressor** model to mathematically extract features driving urbanization scores.")
+    st.subheader("📊 Key Factors Driving Urban Growth")
+    st.write("This chart shows which infrastructure features have the biggest impact on turning a village into an urban center.")
     
-    weights_df = pd.DataFrame(list(AI_WEIGHTS.items()), columns=['Feature Metric', 'Relative Importance Score']).sort_values(by='Relative Importance Score', ascending=False)
+    weights_df = pd.DataFrame(list(AI_WEIGHTS.items()), columns=['Development Factor', 'Impact Level']).sort_values(by='Impact Level', ascending=False)
     
     fig_weights = px.bar(
-        weights_df, x='Relative Importance Score', y='Feature Metric', 
-        orientation='h', title='AI Determined Asset Weights Profile',
-        labels={'Relative Importance Score': 'Impact Weight Factor', 'Feature Metric': 'Dataset Dimension'}
+        weights_df, x='Impact Level', y='Development Factor', 
+        orientation='h', title='Infrastructure Impact Breakdown',
+        labels={'Impact Level': 'Impact Level', 'Development Factor': 'Development Factor'}
     )
     fig_weights.update_layout(yaxis={'categoryorder':'total ascending'})
     st.plotly_chart(fig_weights, use_container_width=True)
